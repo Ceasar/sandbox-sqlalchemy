@@ -1,5 +1,10 @@
+"""
+Demonstrates how the session works and how to catch update events.
+"""
+import sqlalchemy
 from sqlalchemy import (MetaData, Table, Column, ForeignKey, Integer, String,
                         create_engine, orm)
+
 metadata = MetaData()
 
 user_table = Table(
@@ -20,6 +25,16 @@ address_table = Table(
 )
 
 
+event_table = Table(
+    'event',
+    metadata,
+    Column('id', Integer, primary_key=True),
+    Column('attribute', String(64)),
+    Column('old_value', String(64)),
+    Column('new_value', String(64)),
+)
+
+
 class User(object):
     pass
 
@@ -27,23 +42,73 @@ class User(object):
 class Address(object):
     pass
 
+
+class Event(object):
+    pass
+
 orm.mapper(User, user_table, properties={
     'related': orm.relationship(Address)
 })
 orm.mapper(Address, address_table, properties={
 })
+orm.mapper(Event, event_table, properties={
+})
+
+
+def print_session(session):
+    """
+    Print the state of the session.
+    """
+    print '-' * 80
+    print 'session:', session
+    print 'dirty:', session.dirty
+    print 'identity_map:', session.identity_map
+    for instance_state in session.identity_map.values():
+        print orm.attributes.get_history(instance_state, 'name')
+    print
 
 if __name__ == "__main__":
     engine = create_engine('sqlite:///sandbox.db')
     metadata.create_all(engine)
-    session = orm.Session(engine)
-    q = session.query(User)
+    Session = orm.sessionmaker(engine)
+    s = Session()
+    q = s.query(User)
 
+    @sqlalchemy.event.listens_for(s, 'before_flush')
+    def before_flush(session, *args):
+        print "before flush"
+        print_session(session)
+
+    @sqlalchemy.event.listens_for(s, 'after_flush')
+    def after_flush(session, *args):
+        print "after flush"
+        print_session(session)
+
+    @sqlalchemy.event.listens_for(s, 'after_flush_postexec')
+    def after_flush_postexec(session, *args):
+        print "after flush postexec"
+        print_session(session)
+
+    @sqlalchemy.event.listens_for(s, 'before_commit')
+    def before_commit(session, *args):
+        print "before_commit"
+        print_session(session)
+
+    @sqlalchemy.event.listens_for(s, 'after_commit')
+    def after_commit(session, *args):
+        print "after_commit"
+        print_session(session)
+
+    user = q.get(1)
     # Create a user if one does not yet exist
-    if not q.all():
-        u = User()
-        u.name = "John Doe"
-        u.age = 21
-        u.password = "secret"
-        session.add(u)
-        session.commit()
+    if not user:
+        user = User()
+        user.name = "John Doe"
+        user.age = 21
+        user.password = "secret"
+    s.add(user)
+    s.commit()
+
+    print '=' * 80
+    user.name = "Jane Doe"
+    s.commit()
