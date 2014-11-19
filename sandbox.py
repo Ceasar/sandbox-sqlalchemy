@@ -12,8 +12,6 @@ user_table = Table(
     metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(40)),
-    Column('age', Integer),
-    Column('password', String),
 )
 
 address_table = Table(
@@ -47,7 +45,7 @@ class Event(object):
     pass
 
 orm.mapper(User, user_table, properties={
-    'related': orm.relationship(Address)
+    'address': orm.relationship(Address, backref='user', uselist=False)
 })
 orm.mapper(Address, address_table, properties={
 })
@@ -63,8 +61,14 @@ def print_session(session):
     print 'session:', session
     print 'dirty:', session.dirty
     print 'identity_map:', session.identity_map
-    for instance_state in session.identity_map.values():
-        print orm.attributes.get_history(instance_state, 'name')
+    for instance in session.identity_map.values():
+        print
+        if isinstance(instance, User):
+            print "name:", getattr(instance, 'name')
+            print "name:", orm.attributes.get_history(instance, 'name')
+        if isinstance(instance, Address):
+            print "userid:", orm.attributes.get_history(instance, 'user_id')
+            print "value:", orm.attributes.get_history(instance, 'value')
     print
 
 if __name__ == "__main__":
@@ -73,6 +77,14 @@ if __name__ == "__main__":
     Session = orm.sessionmaker(engine)
     s = Session()
     q = s.query(User)
+
+    @sqlalchemy.event.listens_for(User, 'before_update')
+    def before_update(mapper, connection, target):
+        print "before update\n" + '-' * 80
+        if s.is_modified(target):
+            print "modified"
+        print "name:", orm.attributes.get_history(target, 'name')
+        print
 
     @sqlalchemy.event.listens_for(s, 'before_flush')
     def before_flush(session, *args):
@@ -100,15 +112,29 @@ if __name__ == "__main__":
         print_session(session)
 
     user = q.get(1)
+    address = s.query(Address).get(1)
     # Create a user if one does not yet exist
     if not user:
         user = User()
-        user.name = "John Doe"
-        user.age = 21
-        user.password = "secret"
+        address = Address()
+        address.value = '123 Bakers Lane'
+    user.name = "John Doe"
+    address.user_id = user.id
+
     s.add(user)
+    s.add(address)
     s.commit()
 
     print '=' * 80
+    s.expunge(user)
+    # NOTE: commenting out this line causes 'deleted' to not be populated
+    user = q.get(1)
+    user.name = "Jane Doe"
+    s.add(user)
+    s.commit()
+
+"""
+    print '=' * 80
     user.name = "Jane Doe"
     s.commit()
+"""
