@@ -1,5 +1,5 @@
 """
-What causes History to be populated?
+What causes orm.attributes.History [2]_ to be populated?
 
 Accessing an attribute causes a SELECT statement to be emitted, loading every
 attribute of an object::
@@ -8,6 +8,13 @@ attribute of an object::
             user.scalar AS user_scalar, \
             user.nullable AS user_nullable, \
             user.nullable_default AS user_nullable_default
+
+Many of the results of these tests can be deduced from the source. [1]_ In
+particular, look at History.from_scalar_attribute,
+History.from_object_attribute, and History.from_collection.
+
+.. [1] https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/orm/attributes.py
+.. [2] http://docs.sqlalchemy.org/en/rel_0_9/orm/session.html#sqlalchemy.orm.attributes.History
 
 """
 import logging
