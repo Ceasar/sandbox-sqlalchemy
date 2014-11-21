@@ -145,7 +145,7 @@ def test_history_after_commit():
     assert history == ((), ['Alice'], ())
 
 
-def test_history_after_flush_and_set():
+def test_history_set_after_flush():
     session = Session()
     user = User()
     user.scalar = "Alice"
@@ -154,6 +154,17 @@ def test_history_after_flush_and_set():
     user.scalar = "Bob"
     history = orm.attributes.get_history(user, "scalar")
     assert history == (['Bob'], (), ['Alice'])
+
+
+def test_history_set_to_same_after_flush():
+    session = Session()
+    user = User()
+    user.scalar = "Alice"
+    session.add(user)
+    session.flush()
+    user.scalar = "Alice"
+    history = orm.attributes.get_history(user, "scalar")
+    assert history == ((), ['Alice'], ())
 
 
 def test_history_nullable_after_flush_and_set():
