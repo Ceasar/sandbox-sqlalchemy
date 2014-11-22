@@ -188,6 +188,21 @@ def test_history_nullable_after_flush_and_set():
     assert history == (['Bob'], (), ())
 
 
+def test_history_del_nullable_after_flush():
+    """
+    Flushing an object with a nullable column does not cause None to be set,
+    therefore nothing appears in History.deleted.
+    """
+    session = Session()
+    user = User()
+    user.nullable = "Bob"
+    session.add(user)
+    session.flush()
+    del user.nullable
+    history = orm.attributes.get_history(user, "nullable")
+    assert history == ((), (), ['Bob'])
+
+
 def test_history_nullable_default_after_flush_and_set():
     """
     Flushing an object with a column with a default value causes it to be set,
