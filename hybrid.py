@@ -47,7 +47,12 @@ if __name__ == "__main__":
     session.add(user)
     session.flush()
 
+    # Prove to ourselves the query is identical
+    print session.query(User).filter(or_(User.alias == "Ed",
+                                         User.first_name == "Ed"))
+
     q1 = session.query(User).filter_by(name="Edward")
+    print '-' * 80
     print q1
     print q1.one()
 
